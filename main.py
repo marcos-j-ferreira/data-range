@@ -3,6 +3,7 @@ import os
 import time
 import subprocess
 import sys
+import re
 
 par = "False"
 if len(sys.argv) > 1:
@@ -69,3 +70,101 @@ def save_to_file(filename, content):
 
     with open(filename, "w", encoding="utf-8") as file:
         file.write(content)
+
+"""
+Meu programa até está, colocando as configurações, como lendo o json e reformatando as configurações. Está executando o comando e escrevendo em um arquivo
+"""
+
+data = {
+    "up": [],
+    "down": [],
+    "range": {
+        "sinal" : "0%",
+        "TR": 0,
+        "TT": 0
+    }
+}
+
+def read_file(opetion, filename):
+
+    if not os.path.exists(filename):
+        print(f"not found: {filename}")
+        return None
+    
+    padroes = {
+    "Taxa de recepção": r"Taxa de recep[\s\S]*?\(Mbps\)\s*:\s*(\d+)",
+    "Taxa de transmissão": r"Taxa de transmiss[\s\S]*?\(Mbps\)\s*:\s*(\d+)",
+    "Sinal": r"Sinal\s*:\s*(\d+)%"
+}
+    
+    if opetion == "netsh":
+        
+        try:
+
+            result = {}
+            with open(filename, "r", encoding="utf-8") as f:
+                conteudo = f.read()
+
+                for c, p in padroes.items():
+                    match = re.search(p, conteudo)
+                    if match:
+                        result[c] = match.group(1)
+            
+            data['range']['TT'] = result['Taxa de transmissão']
+            data['range']['TR'] = result["Taxa de recepção"]
+            data['range']['sinal'] = result["Sinal"]
+        
+        except Exception as e:
+            print(f"Erro {e}")
+
+    elif opetion == "down":
+
+        try:
+
+            padroes = {
+                "sender" :  r"\[  5\]\s+0.00-30.01\s+sec\s+([\d\.]+)\s+MBytes\s+([\d\.]+)\s+Mbits/sec\s+sender",
+                "receiver":  r"\[  5\]\s+0.00-30.01\s+sec\s+([\d\.]+)\s+MBytes\s+([\d\.]+)\s+Mbits/sec\s+sender"
+            }
+
+
+            ope = ["receiver", "sender"]
+
+            with open (filename,"r") as f:
+                result = f.read()
+            match = re.search(padroes['sender'], result)
+            
+            if match:
+                bandwidth = match.group(2)
+                data["down"].append(bandwidth)
+
+        except Exception as e:
+            print(f"Erro: {e}")
+    
+    elif opetion == "up":
+
+        try:
+
+            padroes = {
+                "sender" :  r"\[  5\]\s+0.00-30.01\s+sec\s+([\d\.]+)\s+MBytes\s+([\d\.]+)\s+Mbits/sec\s+sender",
+                "receiver":  r"\[  5\]\s+0.00-30.01\s+sec\s+([\d\.]+)\s+MBytes\s+([\d\.]+)\s+Mbits/sec\s+sender"
+            }
+
+
+            ope = ["receiver", "sender"]
+
+            with open (filename,"r") as f:
+                result = f.read()
+            match = re.search(padroes['sender'], result)
+            
+            if match:
+                bandwidth = match.group(2)
+                data["up"].append(bandwidth)
+
+        except Exception as e:
+            print(f"Erro: {e}")
+        
+    return data
+
+
+
+print(data)
