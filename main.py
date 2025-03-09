@@ -31,7 +31,7 @@ def path_json():
     config["host"] = data.get("host", "50.0.0.10")
     config["time"] = int(data.get("time", 30))
     config["run"] = int(data.get("run", 3))
-    
+
     return config
 
 def write_json(ip, host, time, vezes):
@@ -50,3 +50,22 @@ def write_json(ip, host, time, vezes):
 
 path_json()
 
+command = {
+    "down": (f"iperf3 -c {config['host']} -B {config['ip']} -t{config['time']}"),
+    "up": (f"iperf3 -c {config['host']} -B {config['ip']} -t{config['time']} -R"),
+    "netsh": ("netsh wlan show interface")
+}
+
+def run_script(command):
+
+    try:
+        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
+        return result.stdout
+    
+    except Exception as e:
+        print(f"Error: {e}")
+
+def save_to_file(filename, content):
+
+    with open(filename, "w", encoding="utf-8") as file:
+        file.write(content)
