@@ -9,7 +9,7 @@ par = "False"
 if len(sys.argv) > 1:
     par = sys.argv[1].upper()
 
-if par == "CLEAR" or par == "-C":
+if par == "CLEAR":
     os.system("cls")
 
 config = {
@@ -58,6 +58,8 @@ command = {
 }
 
 def run_script(command):
+
+    print(command)
 
     try:
         result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
@@ -171,9 +173,9 @@ Até aqui ele está, lendo os arquivos que conterá os dados e armazenando em um
 
 def set_data():
     files = {
-        "down": ["down-01.txt", "down-02.txt", "down-03.txt"],
-        "up": ["up-01.txt", "up-02.txt", "up-03.txt"],
-        "netsh": ["netsh-01.txt","netsh-02.txt","netsh-03.txt" ]
+        "down": ["down-0.txt", "down-1.txt", "down-2.txt"],
+        "up": ["up-0.txt", "up-1.txt", "up-2.txt"],
+        "netsh": ["netsh-0.txt","netsh-1.txt","netsh-2.txt" ]
     }
 
     for category, file_list in files.items():
@@ -201,6 +203,101 @@ def format_table(data):
     
     table = f"\nTabela de Resultados:\n{header}\n{title}\n{header}\n" + "\n".join(rows) + f"\n{header}"
     
+
+    with open("table.txt", "w", encoding= "utf-8") as f:
+        f.write(table)
+
     return table
 
-print(format_table(data))
+
+def main():
+
+    files = {
+        "down": ["down-01.txt", "down-02.txt", "down-03.txt"],
+        "up": ["up-01.txt", "up-02.txt", "up-03.txt"],
+        "netsh": ["netsh-01.txt", "netsh-02.txt", "netsh-03.txt"]
+    }
+
+    run = config["run"]
+
+    for i in range(0, run):
+        print(f"Executando rodada {i+1}...")
+
+        print("Executando teste de download...")
+        down_output = run_script(command["down"] + f" --logfile down-{i}.txt")
+        time.sleep(35)  
+
+        print("Executando teste de upload...")
+        up_output = run_script(command["up"] + f" --logfile up-{i}.txt")
+        time.sleep(35)  
+
+        print("Executando análise de rede...")
+        netsh_output = run_script(command["netsh"])
+        save_to_file(files["netsh"][i], netsh_output)
+        time.sleep(5)  
+
+    set_data()
+
+    tabela = format_table(data)
+    print(tabela)
+    print("Tabela de resultados salva em 'table.txt'.")
+
+
+c = {
+    "ip":None,
+    "host":None,
+    "time": 30,
+    "run": 3
+}
+
+
+
+def show_help():
+    help_text = """
+Uso: python main.py [OPÇÃO] [ARGUMENTOS]
+
+Opções disponíveis:
+  INFO, -I                             Exibe a configuração atual do setup.
+  CONFIG, -C <IP> <HOST> <TIME> <RUN>  Define a configuração e salva no JSON.
+  RUN, -R                              Executa o script principal.
+
+Exemplos:
+  python main.py INFO
+  python main.py CONFIG 192.168.1.1 myserver.com 30 3
+  python main.py RUN
+"""
+    print(help_text)
+
+def parse_args():
+    if len(sys.argv) < 2:
+        show_help()
+        sys.exit(1)
+
+    par = sys.argv[1].upper()
+
+    if par in ["INFO", "-I"]:
+        config = path_json()
+        print(f"Seu setup está configurado da seguinte forma:\n"
+              f"IP: {config['ip']}\n"
+              f"HOST: {config['host']}\n"
+              f"TIME: {config['time']}\n"
+              f"RUN: {config['run']}")
+
+    elif par in ["CONFIG", "-C"]:
+        if len(sys.argv) != 6:
+            print("Erro: Argumentos insuficientes para CONFIG. Use:")
+            print("python main.py CONFIG <IP> <HOST> <TIME> <RUN>")
+            sys.exit(1)
+        
+        ip, host, time, run = sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5]
+        write_json(ip, host, time, run)
+
+    elif par in ["RUN", "-R"]:
+        main()
+    
+    else:
+        print("Erro: Comando desconhecido.")
+        show_help()
+        sys.exit(1)
+        
+parse_args()
