@@ -213,14 +213,14 @@ def format_table(data):
 def main():
 
     files = {
-        "down": ["down-01.txt", "down-02.txt", "down-03.txt"],
-        "up": ["up-01.txt", "up-02.txt", "up-03.txt"],
-        "netsh": ["netsh-01.txt", "netsh-02.txt", "netsh-03.txt"]
+        "down": ["down-0.txt", "down-1.txt", "down-2.txt"],
+        "up": ["up-0.txt", "up-1.txt", "up-2.txt"],
+        "netsh": ["netsh-0.txt", "netsh-1.txt", "netsh-2.txt"]
     }
 
     run = config["run"]
 
-    for i in range(0, run):
+    for i in range(1, run):
         print(f"Executando rodada {i+1}...")
 
         print("Executando teste de download...")
@@ -250,6 +250,42 @@ c = {
     "run": 3
 }
 
+def read(opetion=None, number=3):
+
+    files = {
+        "down": ["down-0.txt","down-1.txt","down-2.txt"],
+        "up": ["up-0.txt","up-1.txt","up-2.txt"],
+        "netsh": ["netsh-0.txt","netsh-0.txt","netsh-0.txt"]
+    }
+
+    ope = opetion.upper()
+
+    if ope is None:
+        print("Escolha uma opção\n Down\n Up\n Netsh")
+
+    if ope == "DOWN":
+
+        for i in range(0,3):
+
+            with open(files["down"][i], "r", encoding="utf-8") as f:
+                result = f.read()
+                print(result)
+    
+    if ope == "UP":
+
+        for i in range(0,3):
+
+            with open(files["up"][i], "r", encoding="utf-8") as f:
+                result = f.read()
+                print(result)
+    
+    if ope == "NETSH":
+
+        for i in range(0,3):
+
+            with open(files["netsh"][i], "r", encoding="utf-8") as f:
+                result = f.read()
+                print(result)
 
 
 def show_help():
@@ -260,11 +296,13 @@ Opções disponíveis:
   INFO, -I                             Exibe a configuração atual do setup.
   CONFIG, -C <IP> <HOST> <TIME> <RUN>  Define a configuração e salva no JSON.
   RUN, -R                              Executa o script principal.
+  LOG, -L   <file>                     Mostra todos os logs dos arquivos
 
 Exemplos:
   python main.py INFO
   python main.py CONFIG 192.168.1.1 myserver.com 30 3
   python main.py RUN
+  python main.py LOG down
 """
     print(help_text)
 
@@ -295,9 +333,25 @@ def parse_args():
     elif par in ["RUN", "-R"]:
         main()
     
+    if par in ["LOG", "-L"]:
+
+        result = sys.argv[2].upper()
+
+        if result == "DOWN":
+            print(result)
+            read("down")
+        elif result == "UP":
+            print(result)
+            read("UP")
+        elif result == "NETSH":
+            print(result)
+            read("NETSH")
+        else:
+            print("Escolha uma opção valida:\n opetion [down, up, netsh]")
+
     else:
         print("Erro: Comando desconhecido.")
         show_help()
         sys.exit(1)
-        
+
 parse_args()
