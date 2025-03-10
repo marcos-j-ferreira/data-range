@@ -312,46 +312,56 @@ def parse_args():
         sys.exit(1)
 
     par = sys.argv[1].upper()
+    comandos = {
+        "INFO": handle_info,
+        "-I": handle_info,
+        "CONFIG": handle_config,
+        "-C": handle_config,
+        "RUN": handle_run,
+        "-R": handle_run,
+        "LOG": handle_log,
+        "-L": handle_log,
+    }
 
-    if par in ["INFO", "-I"]:
-        config = path_json()
-        print(f"Seu setup está configurado da seguinte forma:\n"
-              f"IP: {config['ip']}\n"
-              f"HOST: {config['host']}\n"
-              f"TIME: {config['time']}\n"
-              f"RUN: {config['run']}")
-
-    elif par in ["CONFIG", "-C"]:
-        if len(sys.argv) != 6:
-            print("Erro: Argumentos insuficientes para CONFIG. Use:")
-            print("python main.py CONFIG <IP> <HOST> <TIME> <RUN>")
-            sys.exit(1)
-        
-        ip, host, time, run = sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5]
-        write_json(ip, host, time, run)
-
-    elif par in ["RUN", "-R"]:
-        main()
-    
-    if par in ["LOG", "-L"]:
-
-        result = sys.argv[2].upper()
-
-        if result == "DOWN":
-            print(result)
-            read("down")
-        elif result == "UP":
-            print(result)
-            read("UP")
-        elif result == "NETSH":
-            print(result)
-            read("NETSH")
-        else:
-            print("Escolha uma opção valida:\n opetion [down, up, netsh]")
-
+    if par in comandos:
+        comandos[par]()
     else:
         print("Erro: Comando desconhecido.")
         show_help()
         sys.exit(1)
+
+def handle_info():
+    config = path_json()
+    print(f"Seu setup está configurado da seguinte forma:\n"
+          f"IP: {config['ip']}\n"
+          f"HOST: {config['host']}\n"
+          f"TIME: {config['time']}\n"
+          f"RUN: {config['run']}")
+
+def handle_config():
+    if len(sys.argv) != 6:
+        print("Erro: Argumentos insuficientes para CONFIG. Use:")
+        print("python main.py CONFIG <IP> <HOST> <TIME> <RUN>")
+        sys.exit(1)
+    
+    ip, host, time, run = sys.argv[2:6]
+    write_json(ip, host, time, run)
+
+def handle_run():
+    main()
+
+def handle_log():
+    if len(sys.argv) < 3:
+        print("Necessário passar um nome de arquivo. Opções: [up, down, netsh]")
+        return
+    
+    result = sys.argv[2].upper()
+    opcoes_validas = {"DOWN": "down", "UP": "UP", "NETSH": "NETSH"}
+    
+    if result in opcoes_validas:
+        print(result)
+        read(opcoes_validas[result])
+    else:
+        print("Escolha uma opção válida:\nOpções: [down, up, netsh]")
 
 parse_args()
