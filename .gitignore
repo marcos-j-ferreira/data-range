@@ -1,2 +1,4 @@
 test.py
 *.txt
+*.bat
+path.py
