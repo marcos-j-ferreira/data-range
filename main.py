@@ -1,4 +1,4 @@
-import json 
+import json
 import os
 import time
 import subprocess
@@ -6,17 +6,27 @@ import sys
 import re
 
 par = "False"
+
 if len(sys.argv) > 1:
     par = sys.argv[1].upper()
 
 if par == "CLEAR":
     os.system("cls")
 
+def clear():
+    os.system("cls")
+
 config = {
     "ip": None,
     "host": None,
     "time":None,
-    "run": None
+    "run": 3
+}
+
+files = {
+        "down": ["down-1.txt", "down-2.txt", "down-3.txt"],
+        "up": ["up-1.txt", "up-2.txt", "up-3.txt"],
+        "netsh": ["netsh-1.txt","netsh-2.txt" ,"netsh-3.txt"]
 }
 
 def path_json():
@@ -31,7 +41,7 @@ def path_json():
     config["ip"] = data.get("ip", "10.0.0.2")
     config["host"] = data.get("host", "50.0.0.10")
     config["time"] = int(data.get("time", 30))
-    config["run"] = int(data.get("run", 3))
+    # config["run"] = int(data.get("run", 3))
 
     return config
 
@@ -73,10 +83,6 @@ def save_to_file(filename, content):
     with open(filename, "w", encoding="utf-8") as file:
         file.write(content)
 
-"""
-Meu programa até está, colocando as configurações, como lendo o json e reformatando as configurações. Está executando o comando e escrevendo em um arquivo
-"""
-
 data = {
     "up": [],
     "down": [],
@@ -87,161 +93,136 @@ data = {
     }
 }
 
-def read_file(opetion, filename):
+filess = {"netsh": ["netsh-1.txt","netsh-1.txt","netsh-2.txt" ,"netsh-3.txt"]}
 
+def read_file(option, filename):
     if not os.path.exists(filename):
-        print(f"not found: {filename}")
+        print(f"Arquivo não encontrado: {filename}")
         return None
-
     
-    if opetion == "netsh":
-        
-        padroes = {
+    global data
+    
+    if option == "netsh":
+        patterns = {
             "Taxa de recepção": r"Taxa de recep[\s\S]*?\(Mbps\)\s*:\s*(\d+)",
             "Taxa de transmissão": r"Taxa de transmiss[\s\S]*?\(Mbps\)\s*:\s*(\d+)",
             "Sinal": r"Sinal\s*:\s*(\d+)%"
         }
         try:
-
             result = {}
             with open(filename, "r", encoding="utf-8") as f:
-                conteudo = f.read()
-
-                for c, p in padroes.items():
-                    match = re.search(p, conteudo)
-                    if match:
-                        result[c] = match.group(1)
+                content = f.read()
             
-            data['range']['TT'].append(result['Taxa de transmissão'])
-            data['range']['TR'].append(result["Taxa de recepção"])
-            data['range']['sinal'].append(result["Sinal"])
-        
-        except Exception as e:
-            print(f"Erro {e}")
-
-    elif opetion == "down":
-
-        try:
-
-            padroes = {
-                "sender" :  r"\[  5\]\s+0.00-30.01\s+sec\s+([\d\.]+)\s+MBytes\s+([\d\.]+)\s+Mbits/sec\s+sender",
-                "receiver":  r"\[  5\]\s+0.00-30.01\s+sec\s+([\d\.]+)\s+MBytes\s+([\d\.]+)\s+Mbits/sec\s+sender"
-            }
-
-
-            ope = ["receiver", "sender"]
-
-            with open (filename,"r") as f:
-                result = f.read()
-            match = re.search(padroes['sender'], result)
+            for key, pattern in patterns.items():
+                match = re.search(pattern, content)
+                if match:
+                    result[key] = int(match.group(1))
             
-            if match:
-                bandwidth = match.group(2)
-                data["down"].append(bandwidth)
-
+            if result:
+                data['range']['TT'].append(result.get('Taxa de transmissão', 0))
+                data['range']['TR'].append(result.get("Taxa de recepção", 0))
+                data['range']['sinal'].append(result.get("Sinal", 0))
+            
         except Exception as e:
-            print(f"Erro: {e}")
+            print(f"Erro ao processar netsh: {e}")
     
-    elif opetion == "up":
-
+    elif option in ["down", "up"]:
         try:
-
-            padroes = {
-                "sender" :  r"\[  5\]\s+0.00-30.01\s+sec\s+([\d\.]+)\s+MBytes\s+([\d\.]+)\s+Mbits/sec\s+sender",
-                "receiver":  r"\[  5\]\s+0.00-30.01\s+sec\s+([\d\.]+)\s+MBytes\s+([\d\.]+)\s+Mbits/sec\s+sender"
-            }
-
-
-            ope = ["receiver", "sender"]
-
-            with open (filename,"r") as f:
-                result = f.read()
-            match = re.search(padroes['sender'], result)
             
-            if match:
-                bandwidth = match.group(2)
-                data["up"].append(bandwidth)
+            with open(filename, "r", encoding="utf-8") as f:
+                content = f.read()
+            
+            pattern = r"\[\s*\d+\]\s+0.00-\d+\.\d{2}\s+sec\s+[\d\.]+\s+[GM]Bytes\s+([\d\.]+)\s+Mbits/sec\s+(sender|receiver)"
+            matches = re.findall(pattern, content)
+            
+            if matches:
+                for bandwidth, direction in matches:
+                    bandwidth_value = float(bandwidth)
+                    if option == "down" and direction == "receiver":
+                        data["down"].append(bandwidth_value)
+                    elif option == "up" and direction == "sender":
+                        data["up"].append(bandwidth_value)
 
-        except Exception as e:
-            print(f"Erro: {e}")
+            if matches:
+                for bandwidth, direction in matches:
+                    bandwidth_value = float(bandwidth)
+                    if option == "up" and direction == "receiver":
+                        data["up"].append(bandwidth_value)
+                    # elif option == "down" and direction == "sender":
+                    #     data["down"].append(bandwidth_value)
+            else:
+                print("Nenhum valor final de Bandwidth encontrado.")
         
+        except Exception as e:
+            print(f"Erro ao processar {option}: {e}")
+    
     return data
 
-"""
-Até aqui ele está, lendo os arquivos que conterá os dados e armazenando em um dic
-"""
-
 def set_data():
-    files = {
-        "down": ["down-0.txt", "down-1.txt", "down-2.txt"],
-        "up": ["up-0.txt", "up-1.txt", "up-2.txt"],
-        "netsh": ["netsh-0.txt","netsh-1.txt","netsh-2.txt" ]
-    }
-
+    data["up"].clear()
+    data["down"].clear()
+    data["range"]["sinal"].clear()
+    data["range"]["TR"].clear()
+    data["range"]["TT"].clear()
+    
     for category, file_list in files.items():
         for file_name in file_list:
             read_file(category, file_name)
 
 def format_table(data):
-    set_data()
-
-    header = "+---------+----+------+----------------------------------------------------+"
-    title = "| Rodadas | Up | Down |                        Data                        |"
+    #print(data)
+    header = "+---------+---------+---------+--------------------------------+"
+    title = "| Rodadas |   Up    |  Down   |       Dados                    |"
+    separator = header
     
-    num_rodadas = len(data["up"])
-    
+    num_rodadas = len(data["up"]) if len(data["up"]) > len(data["down"]) else len(data["down"])
     rows = []
-    for i in range(num_rodadas):
-        up = data["up"][i]
-        down = data["down"][i]
-        sinal = data["range"]["sinal"][i]
-        tr = data["range"]["TR"][i]
-        tt = data["range"]["TT"][i]
+
+    for i in range(3):
+        up = data["up"][i] if i < len(data["up"]) else "N/A"
+        down = data["down"][i] if i < len(data["down"]) else "N/A"
+        sinal = data["range"]["sinal"][i] if i < len(data["range"]["sinal"]) else "N/A"
+        tr = data["range"]["TR"][i] if i < len(data["range"]["TR"]) else "N/A"
+        tt = data["range"]["TT"][i] if i < len(data["range"]["TT"]) else "N/A"
         
-        row = f"|    {i+1}    | {up}  |  {down}   | 'T. Rec.': '{tr}', 'T. Tra.': '{tt}', 'Sinal': '{sinal}' |"
+        row = f"|    {i+1}    | {up:<7} | {down:<7} | Rec.: {tr}, Tra.: {tt}, S: {sinal}% |"
         rows.append(row)
     
-    table = f"\nTabela de Resultados:\n{header}\n{title}\n{header}\n" + "\n".join(rows) + f"\n{header}"
+    table = f"\nTabela de Resultados:\n{separator}\n{title}\n{separator}\n" + "\n".join(rows) + f"\n{separator}"
     
-
-    with open("table.txt", "w", encoding= "utf-8") as f:
+    with open("table.txt", "w", encoding="utf-8") as f:
         f.write(table)
-
+    
     return table
 
-
 def main():
-
-    files = {
-        "down": ["down-0.txt", "down-1.txt", "down-2.txt"],
-        "up": ["up-0.txt", "up-1.txt", "up-2.txt"],
-        "netsh": ["netsh-0.txt", "netsh-1.txt", "netsh-2.txt"]
-    }
-
     run = config["run"]
 
-    for i in range(1, run):
-        print(f"Executando rodada {i+1}...")
+    c = 1
+
+    for i in range(1, 4):
+        print(f"Executando rodada {i}...")
 
         print("Executando teste de download...")
         down_output = run_script(command["down"] + f" --logfile down-{i}.txt")
-        time.sleep(35)  
+        #time.sleep(config["time"] + 2)  
 
         print("Executando teste de upload...")
         up_output = run_script(command["up"] + f" --logfile up-{i}.txt")
-        time.sleep(35)  
+        #time.sleep(config["time"] + 2)  
 
         print("Executando análise de rede...")
         netsh_output = run_script(command["netsh"])
-        save_to_file(files["netsh"][i], netsh_output)
-        time.sleep(5)  
+        save_to_file(filess["netsh"][i], netsh_output)
+        #time.sleep(2)  
+
+        c = 0
 
     set_data()
 
     tabela = format_table(data)
     print(tabela)
     print("Tabela de resultados salva em 'table.txt'.")
-
 
 c = {
     "ip":None,
@@ -251,44 +232,36 @@ c = {
 }
 
 def read(opetion=None, number=3):
-
-    files = {
-        "down": ["down-0.txt","down-1.txt","down-2.txt"],
-        "up": ["up-0.txt","up-1.txt","up-2.txt"],
-        "netsh": ["netsh-0.txt","netsh-0.txt","netsh-0.txt"]
-    }
-
     ope = opetion.upper()
 
     if ope is None:
         print("Escolha uma opção\n Down\n Up\n Netsh")
 
     if ope == "DOWN":
-
+        clear()
         for i in range(0,3):
-
             with open(files["down"][i], "r", encoding="utf-8") as f:
                 result = f.read()
                 print(result)
     
     if ope == "UP":
+        clear()
 
         for i in range(0,3):
-
             with open(files["up"][i], "r", encoding="utf-8") as f:
                 result = f.read()
                 print(result)
     
     if ope == "NETSH":
+        clear()
 
         for i in range(0,3):
-
             with open(files["netsh"][i], "r", encoding="utf-8") as f:
                 result = f.read()
                 print(result)
 
-
 def show_help():
+    clear()
     help_text = """
 Uso: python main.py [OPÇÃO] [ARGUMENTOS]
 
@@ -297,14 +270,26 @@ Opções disponíveis:
   CONFIG, -C <IP> <HOST> <TIME> <RUN>  Define a configuração e salva no JSON.
   RUN, -R                              Executa o script principal.
   LOG, -L   <file>                     Mostra todos os logs dos arquivos
+  DELETE, -D                           Deleta todos os arquivos de log.
+  TABLE, -T                            Mostra a tabela de resultados.
 
 Exemplos:
   python main.py INFO
   python main.py CONFIG 192.168.1.1 myserver.com 30 3
   python main.py RUN
   python main.py LOG down
+  python main.py DELETE
+  python main.py TABLE
 """
     print(help_text)
+
+def delete_files():
+    for category, file_list in files.items():
+        for file in file_list:
+            if os.path.exists(file):
+                os.remove(file)
+    print("Cache limpo")
+
 
 def parse_args():
     if len(sys.argv) < 2:
@@ -321,6 +306,10 @@ def parse_args():
         "-R": handle_run,
         "LOG": handle_log,
         "-L": handle_log,
+        "-D": delete_files,
+        "DELETE": delete_files,
+        "-T": show_table,
+        "TABLE": show_table
     }
 
     if par in comandos:
@@ -329,6 +318,11 @@ def parse_args():
         print("Erro: Comando desconhecido.")
         show_help()
         sys.exit(1)
+
+def show_table():
+    set_data()
+    tabela = format_table(data)
+    print(tabela)
 
 def handle_info():
     config = path_json()
@@ -348,6 +342,7 @@ def handle_config():
     write_json(ip, host, time, run)
 
 def handle_run():
+    delete_files()
     main()
 
 def handle_log():
